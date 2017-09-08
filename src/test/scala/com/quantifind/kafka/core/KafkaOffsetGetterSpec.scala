@@ -6,10 +6,11 @@ import java.nio.{BufferUnderflowException, ByteBuffer}
 
 import kafka.api.{OffsetRequest, OffsetResponse, PartitionOffsetsResponse}
 import kafka.common.{OffsetAndMetadata, OffsetMetadata, TopicAndPartition}
-import kafka.coordinator._
+import kafka.coordinator.group._
 import kafka.consumer.SimpleConsumer
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.common.protocol.Errors
 import org.mockito.Matchers._
 import org.mockito.Mockito._
 import org.mockito.{Mockito, Matchers => MockitoMatchers}
@@ -40,7 +41,7 @@ class KafkaOffsetGetterSpec extends FlatSpec with ShouldMatchers {
 
     val topicAndPartition = TopicAndPartition(testTopic, testPartition)
     val topicPartition = new TopicPartition(testTopic, testPartition)
-    val groupTopicPartition = GroupTopicPartition(testGroup, TopicAndPartition(testTopic, testPartition))
+    val groupTopicPartition = GroupTopicPartition(testGroup, new TopicPartition(testTopic, testPartition))
     val offsetAndMetadata = OffsetAndMetadata(committedOffset, "meta", System.currentTimeMillis)
 
     KafkaOffsetGetter.committedOffsetMap += (groupTopicPartition -> offsetAndMetadata)
@@ -49,7 +50,7 @@ class KafkaOffsetGetterSpec extends FlatSpec with ShouldMatchers {
     when(mockedZkUtil.getLeaderForPartition(MockitoMatchers.eq(testTopic), MockitoMatchers.eq(testPartition)))
         .thenReturn(Some(testPartitionLeader))
 
-    val partitionErrorAndOffsets = Map(topicAndPartition -> PartitionOffsetsResponse(0, Seq(logEndOffset)))
+    val partitionErrorAndOffsets = Map(topicAndPartition -> PartitionOffsetsResponse(Errors.NONE, Seq(logEndOffset)))
     val offsetResponse = OffsetResponse(1, partitionErrorAndOffsets)
     when(mockedConsumer.getOffsetsBefore(any[OffsetRequest])).thenReturn(offsetResponse)
 
@@ -158,7 +159,7 @@ class KafkaOffsetGetterSpec extends FlatSpec with ShouldMatchers {
     val gtp: GroupTopicPartition = messageOffsetMap._1
     val offMeta: OffsetAndMetadata = messageOffsetMap._2
     gtp.group shouldBe group
-    gtp.topicPartition shouldBe TopicAndPartition(topic, partition)
+    gtp.topicPartition shouldBe TopicPartition(topic, partition)
     offMeta shouldBe offsetAndMetadata
   }
 }
